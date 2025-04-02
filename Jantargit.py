@@ -1,130 +1,112 @@
 import random
 
-NUM_FILOSOFOS = 5
+# Parâmetros da Simulação
 
-def simula_jantar(config):
- 
-    # Inicializa os 5 garfos como disponíveis (True = disponível)
-    garfos = [True] * NUM_FILOSOFOS
-    # Gera uma ordem aleatória para os filósofos tentarem comer
-    ordem_filosofos = list(range(NUM_FILOSOFOS))
-    random.shuffle(ordem_filosofos)
-    # Contador de filósofos que conseguiram comer
-    comedores = 0
+NUM_FILOSOFOS = 5         # Número de filósofos (e garfos)
+TEMPO_COMER = 1.0         # Duração em que um filósofo "come" e mantém os garfos
+INTERVALO_TEMPO = (0, 10) # Intervalo permitido para os atrasos
 
-    for i in ordem_filosofos:
-        # Determina a ordem de pegar os garfos conforme a estratégia do filósofo i
-        if config[i] == 0:  # Estratégia: pegar o garfo esquerdo primeiro
-            primeiro = i
-            segundo = (i + 1) % NUM_FILOSOFOS
-        else:             # Estratégia: pegar o garfo direito primeiro
-            primeiro = (i + 1) % NUM_FILOSOFOS
-            segundo = i
+# Função de simulação do problema dos filósofos
+def simular(delays):
+    # Inicializa os garfos: cada garfo terá uma lista de intervalos ocupados.
+    garfos = [[] for _ in range(NUM_FILOSOFOS)]
+    sucesso = 0  # Contador de filósofos que conseguiram comer
 
-        # Tenta pegar o primeiro garfo
-        if garfos[primeiro]:
-            # "Pega" o primeiro garfo (marca como indisponível)
-            garfos[primeiro] = False
-            # Verifica se o segundo garfo está disponível
-            if garfos[segundo]:
-                # Consegue pegar o segundo garfo: o filósofo come
-                garfos[segundo] = False
-                comedores += 1
-                # Após comer, libera os dois garfos
-                garfos[primeiro] = True
-                garfos[segundo] = True
-            else:
-                # Não conseguiu pegar o segundo garfo; libera o primeiro
-                garfos[primeiro] = True
+    # Cria uma lista de eventos: (atraso, índice do filósofo)
+    eventos = sorted([(d, i) for i, d in enumerate(delays)], key=lambda x: x[0])
+    
+    # Processa cada evento em ordem de chegada (menor atraso primeiro)
+    for d, i in eventos:
+        garfo_esq = i
+        garfo_dir = (i + 1) % NUM_FILOSOFOS
+        
+        # Verifica se um garfo está livre no instante 'd'
+        def esta_livre(intervalos):
+            for (inicio, fim) in intervalos:
+                if d >= inicio and d < fim:
+                    return False
+            return True
 
-    return comedores
+        # Se ambos os garfos estão livres, o filósofo come e ocupa os garfos
+        if esta_livre(garfos[garfo_esq]) and esta_livre(garfos[garfo_dir]):
+            sucesso += 1
+            garfos[garfo_esq].append((d, d + TEMPO_COMER))
+            garfos[garfo_dir].append((d, d + TEMPO_COMER))
+    
+    return sucesso
 
-def avalia_fitness(config, num_simulacoes=100):
-   
-    soma = 0
-    for _ in range(num_simulacoes):
-        soma += simula_jantar(config)
-    return soma / num_simulacoes
+# Parâmetros do Algoritmo Genético
 
-# COMPONENTES DO ALGORITMO GENÉTICO
-def gera_populacao(tamanho):
-   
-    populacao = []
-    for _ in range(tamanho):
-        cromossomo = [random.randint(0, 1) for _ in range(NUM_FILOSOFOS)]
-        populacao.append(cromossomo)
-    return populacao
+POPULACAO = 50             # Tamanho da população
+GERACOES = 100             # Número de gerações
+TAXA_CROSSOVER = 0.8       # Probabilidade de crossover
+TAXA_MUTACAO = 0.3         # Probabilidade de mutação (alta para promover variedade)
+STDDEV_MUTACAO = 0.5       # Desvio padrão para o ruído na mutação
 
-def selecao_roleta(populacao, fitnesses):
-   
-    total_fitness = sum(fitnesses)
-    # Se todas as fitness forem zero, seleciona aleatoriamente
-    if total_fitness == 0:
-        return random.choice(populacao)
-    pick = random.uniform(0, total_fitness)
-    current = 0
-    for cromossomo, fit in zip(populacao, fitnesses):
-        current += fit
-        if current >= pick:
-            return cromossomo
+# Cria um indivíduo aleatório
+def criar_individuo():
+    return [random.uniform(*INTERVALO_TEMPO) for _ in range(NUM_FILOSOFOS)]
 
+# Operador de crossover de um ponto
 def crossover(pai1, pai2):
-   
-    ponto = random.randint(1, NUM_FILOSOFOS - 1)
-    filho1 = pai1[:ponto] + pai2[ponto:]
-    filho2 = pai2[:ponto] + pai1[ponto:]
-    return filho1, filho2
+    if random.random() < TAXA_CROSSOVER:
+        ponto = random.randint(1, NUM_FILOSOFOS - 1)
+        filho = pai1[:ponto] + pai2[ponto:]
+        return filho
+    else:
+        return pai1.copy()
 
-def mutacao(cromossomo, taxa_mutacao=0.1):
-   
-    for i in range(NUM_FILOSOFOS):
-        if random.random() < taxa_mutacao:
-            cromossomo[i] = 1 - cromossomo[i]
-    return cromossomo
+# Operador de mutação: adiciona ruído gaussiano ao gene
+def mutacao(individuo):
+    for i in range(len(individuo)):
+        if random.random() < TAXA_MUTACAO:
+            individuo[i] += random.gauss(0, STDDEV_MUTACAO)
+            individuo[i] = max(INTERVALO_TEMPO[0], min(INTERVALO_TEMPO[1], individuo[i]))
+    return individuo
 
-
-# ALGORITMO GENÉTICO PRINCIPAL
-
-def algoritmo_genetico(tamanho_pop=20, geracoes=50, taxa_mutacao=0.1):
-   
-    # Gera a população inicial
-    populacao = gera_populacao(tamanho_pop)
-    melhor_config = None
+# Função principal do algoritmo genético
+def algoritmo_genetico():
+    populacao = [criar_individuo() for _ in range(POPULACAO)]
+    melhor_individuo = None
     melhor_fitness = -1
 
-    for geracao in range(geracoes):
-        fitnesses = [avalia_fitness(cromo) for cromo in populacao]
-
-        # Atualiza o melhor cromossomo até o momento
-        for cromo, fit in zip(populacao, fitnesses):
+    for geracao in range(GERACOES):
+        # Avalia a aptidão de cada indivíduo
+        fitness = [simular(ind) for ind in populacao]
+        
+        # Atualiza o melhor indivíduo encontrado
+        for i, fit in enumerate(fitness):
             if fit > melhor_fitness:
                 melhor_fitness = fit
-                melhor_config = cromo
+                melhor_individuo = populacao[i]
+        
+        print(f"Geração {geracao} - Melhor aptidão: {melhor_fitness}")
 
+        # Seleção por torneio
         nova_populacao = []
-        # Gera nova população aplicando seleção, crossover e mutação
-        while len(nova_populacao) < tamanho_pop:
-            # Seleciona dois pais
-            pai1 = selecao_roleta(populacao, fitnesses)
-            pai2 = selecao_roleta(populacao, fitnesses)
-            # Realiza o crossover para gerar dois filhos
-            filho1, filho2 = crossover(pai1, pai2)
-            # Aplica mutação em cada filho
-            filho1 = mutacao(filho1, taxa_mutacao)
-            filho2 = mutacao(filho2, taxa_mutacao)
-            nova_populacao.extend([filho1, filho2])
-        # Garante que a nova população tenha o tamanho correto
-        populacao = nova_populacao[:tamanho_pop]
+        while len(nova_populacao) < POPULACAO:
+            torneio = 3
+            candidatos = random.sample(list(zip(populacao, fitness)), torneio)
+            pai1 = max(candidatos, key=lambda x: x[1])[0]
+            candidatos = random.sample(list(zip(populacao, fitness)), torneio)
+            pai2 = max(candidatos, key=lambda x: x[1])[0]
+            
+            # Aplica crossover e mutação
+            filho = crossover(pai1, pai2)
+            filho = mutacao(filho)
+            nova_populacao.append(filho)
+        
+        populacao = nova_populacao
 
-        # Exibe informações de progresso
-        print(f"Geração {geracao+1} | Melhor fitness: {melhor_fitness:.2f} | Melhor configuração: {melhor_config}")
+    return melhor_individuo, melhor_fitness
 
-    return melhor_config, melhor_fitness
+# Execução do algoritmo genético com exibição da melhor solução em porcentagem
+if __name__ == "__main__":
+    melhor_solucao, aptidao = algoritmo_genetico()
+    # Calcula a porcentagem da melhor aptidão em relação ao máximo (NUM_FILOSOFOS)
+    porcentagem = (aptidao / NUM_FILOSOFOS) * 100
 
-
-# EXECUÇÃO DO ALGORITMO
-if __name__ == '__main__':
-    melhor, fit = algoritmo_genetico(tamanho_pop=20, geracoes=50, taxa_mutacao=0.1)
-    print("\nMelhor solução encontrada:")
-    print("Configuração (estratégia por filósofo):", melhor)
-    print(f"Fitness (média de filósofos que comeram): {fit:.2f}")
+    print("\nMelhor solução encontrada (vetor de atrasos):")
+    print(melhor_solucao)
+    print("Aptidão (número de filósofos que comeram):", aptidao)
+    print("Porcentagem de sucesso: {:.2f}%".format(porcentagem))
