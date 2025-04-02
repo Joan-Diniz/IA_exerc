@@ -1,11 +1,7 @@
 import random
 
-# Número de filósofos (e, consequentemente, número de garfos = 5)
 NUM_FILOSOFOS = 5
 
-# -----------------------------
-# SIMULAÇÃO DO JANTAR DOS FILÓSOFOS
-# -----------------------------
 def simula_jantar(config):
  
     # Inicializa os 5 garfos como disponíveis (True = disponível)
@@ -50,9 +46,7 @@ def avalia_fitness(config, num_simulacoes=100):
         soma += simula_jantar(config)
     return soma / num_simulacoes
 
-# -----------------------------
 # COMPONENTES DO ALGORITMO GENÉTICO
-# -----------------------------
 def gera_populacao(tamanho):
    
     populacao = []
@@ -88,9 +82,9 @@ def mutacao(cromossomo, taxa_mutacao=0.1):
             cromossomo[i] = 1 - cromossomo[i]
     return cromossomo
 
-# -----------------------------
+
 # ALGORITMO GENÉTICO PRINCIPAL
-# -----------------------------
+
 def algoritmo_genetico(tamanho_pop=20, geracoes=50, taxa_mutacao=0.1):
    
     # Gera a população inicial
@@ -127,9 +121,8 @@ def algoritmo_genetico(tamanho_pop=20, geracoes=50, taxa_mutacao=0.1):
 
     return melhor_config, melhor_fitness
 
-# -----------------------------
+
 # EXECUÇÃO DO ALGORITMO
-# -----------------------------
 if __name__ == '__main__':
     melhor, fit = algoritmo_genetico(tamanho_pop=20, geracoes=50, taxa_mutacao=0.1)
     print("\nMelhor solução encontrada:")
