@@ -2,7 +2,7 @@ import random
 
 # Parâmetros da Simulação
 
-NUM_FILOSOFOS = 5         # Número de filósofos (e garfos)
+NUM_FILOSOFOS = 50         # Número de filósofos (e garfos)
 TEMPO_COMER = 1.0         # Duração em que um filósofo "come" e mantém os garfos
 INTERVALO_TEMPO = (0, 10) # Intervalo permitido para os atrasos
 
