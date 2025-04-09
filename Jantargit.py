@@ -56,7 +56,7 @@ def crossover(pai1, pai2):
     else:
         return pai1.copy()
 
-# Operador de mutação: adiciona ruído gaussiano ao gene
+# Operador de mutação
 def mutacao(individuo):
     for i in range(len(individuo)):
         if random.random() < TAXA_MUTACAO:
