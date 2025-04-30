@@ -4,7 +4,7 @@ from skfuzzy import control as ctrl
 import matplotlib.pyplot as plt
 
 # Definição das variáveis fuzzy
-# Erro entre o nível desejado e o nível atual
+# nivel entre o nível desejado e o nível atual
 erro = ctrl.Antecedent(np.arange(-10, 11, 1), 'nivel')
 
 # Derivada do erro velocidade com que o erro está mudando 
@@ -14,12 +14,12 @@ delta_erro = ctrl.Antecedent(np.arange(-5, 6, 1), 'velocidade')
 controle = ctrl.Consequent(np.arange(0, 101, 1), 'controle')
 
 # Definição das funções de pertinência
-# Erro: Negativo, Zero, Positivo
+# nivel: Negativo, Zero, Positivo
 erro['negativo'] = fuzz.trimf(erro.universe, [-10, -10, 0])
 erro['zero'] = fuzz.trimf(erro.universe, [-5, 0, 5])
 erro['positivo'] = fuzz.trimf(erro.universe, [0, 10, 10])
 
-# Delta do erro: Diminuindo, Constante, Aumentando
+# velocidade: Diminuindo, Constante, Aumentando
 delta_erro['diminuindo'] = fuzz.trimf(delta_erro.universe, [-5, -5, 0])
 delta_erro['constante'] = fuzz.trimf(delta_erro.universe, [-2, 0, 2])
 delta_erro['aumentando'] = fuzz.trimf(delta_erro.universe, [0, 5, 5])
