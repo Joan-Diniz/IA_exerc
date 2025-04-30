@@ -1,0 +1,61 @@
+import numpy as np
+import skfuzzy as fuzz
+from skfuzzy import control as ctrl
+
+# 1. Definição das variáveis fuzzy
+# Erro entre o nível desejado e o nível atual (em cm)
+erro = ctrl.Antecedent(np.arange(-10, 11, 1), 'erro')
+
+# Derivada do erro - velocidade com que o erro está mudando (em cm/s)
+delta_erro = ctrl.Antecedent(np.arange(-5, 6, 1), 'delta_erro')
+
+# Ação de controle (abertura da válvula, de 0 a 100%)
+controle = ctrl.Consequent(np.arange(0, 101, 1), 'controle')
+
+# 2. Definição das funções de pertinência
+# Erro: Negativo, Zero, Positivo
+erro['negativo'] = fuzz.trimf(erro.universe, [-10, -10, 0])
+erro['zero'] = fuzz.trimf(erro.universe, [-5, 0, 5])
+erro['positivo'] = fuzz.trimf(erro.universe, [0, 10, 10])
+
+# Delta do erro: Diminuindo, Constante, Aumentando
+delta_erro['diminuindo'] = fuzz.trimf(delta_erro.universe, [-5, -5, 0])
+delta_erro['constante'] = fuzz.trimf(delta_erro.universe, [-2, 0, 2])
+delta_erro['aumentando'] = fuzz.trimf(delta_erro.universe, [0, 5, 5])
+
+# Controle: Fechar, Médio, Abrir
+controle['fechar'] = fuzz.trimf(controle.universe, [0, 0, 50])
+controle['medio'] = fuzz.trimf(controle.universe, [25, 50, 75])
+controle['abrir'] = fuzz.trimf(controle.universe, [50, 100, 100])
+
+# 3. Definição das regras fuzzy
+regra1 = ctrl.Rule(erro['negativo'] & delta_erro['diminuindo'], controle['abrir'])
+regra2 = ctrl.Rule(erro['negativo'] & delta_erro['constante'], controle['abrir'])
+regra3 = ctrl.Rule(erro['negativo'] & delta_erro['aumentando'], controle['medio'])
+
+regra4 = ctrl.Rule(erro['zero'] & delta_erro['constante'], controle['medio'])
+
+regra5 = ctrl.Rule(erro['positivo'] & delta_erro['diminuindo'], controle['medio'])
+regra6 = ctrl.Rule(erro['positivo'] & delta_erro['constante'], controle['fechar'])
+regra7 = ctrl.Rule(erro['positivo'] & delta_erro['aumentando'], controle['fechar'])
+
+# 4. Criação do sistema de controle
+sistema_controle = ctrl.ControlSystem([
+    regra1, regra2, regra3,
+    regra4,
+    regra5, regra6, regra7
+])
+
+# Simulador do sistema
+simulador = ctrl.ControlSystemSimulation(sistema_controle)
+
+# 5. Testando o sistema de controle
+# Exemplo: erro = -4 (nível abaixo do desejado), delta_erro = +1 (erro está aumentando)
+simulador.input['erro'] = -4
+simulador.input['delta_erro'] = 1
+
+# Realiza a inferência fuzzy
+simulador.compute()
+
+# Mostra o valor de saída (nível de abertura da válvula)
+print(f"Abertura da válvula: {simulador.output['controle']:.2f}%")
